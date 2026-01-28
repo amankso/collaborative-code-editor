@@ -1,0 +1,17 @@
+## IntelliJ / IDE
+.idea/
+*.iml
+.vscode/
+
+# Java / Maven
+**/target/
+*.log
+.mvn/
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
