@@ -1,4 +1,4 @@
-package com.tutorial.platformservice.exception;
+package com.tutorial.projectservice.exception;
 
 import lombok.Data;
 import org.springframework.http.HttpStatus;
