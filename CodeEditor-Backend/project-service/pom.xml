@@ -6,11 +6,10 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Spring Boot 4.x -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.2</version>
+        <version>3.2.6</version>
         <relativePath/>
     </parent>
 
@@ -18,10 +17,8 @@
     <artifactId>project-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>project-service</name>
-    <description>Core project state service</description>
 
     <properties>
-        <!-- Compiled bytecode -->
         <java.version>17</java.version>
     </properties>
 
@@ -33,36 +30,29 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- MongoDB (Project persistence) -->
+        <!-- MongoDB -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
 
-        <!-- Redis (caching latest project state) -->
+        <!-- Redis (optional caching) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-<!--        &lt;!&ndash; Spring Cache abstraction &ndash;&gt;-->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.boot</groupId>-->
-<!--            <artifactId>spring-boot-starter-cache</artifactId>-->
-<!--        </dependency>-->
-
-<!--        &lt;!&ndash; Feign (sync calls from other services) &ndash;&gt;-->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.cloud</groupId>-->
-<!--            <artifactId>spring-cloud-starter-openfeign</artifactId>-->
-<!--        </dependency>-->
-
-        <!-- Kafka (async updates from collab-service) -->
+        <!-- Kafka Consumer -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
-        <!-- If you later choose RabbitMQ instead, remove Kafka and add AMQP -->
+
+        <!-- JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
 
         <!-- Lombok -->
         <dependency>
@@ -71,25 +61,11 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Tests -->
+        <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.tutorial</groupId>
-            <artifactId>platform-service</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
         </dependency>
 
     </dependencies>
@@ -97,7 +73,6 @@
     <build>
         <plugins>
 
-            <!-- Java 17 bytecode, JDK 22 runtime OK -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -112,7 +87,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Spring Boot executable jar -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

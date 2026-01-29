@@ -1,48 +1,63 @@
-# this is a docker file
-
-version: '3'
-
-
 services:
   mongodb:
-    image: 'mongo'
+    image: mongo
     ports:
-      - 27017:27017
+      - "27017:27017"
     container_name: mongodb
     volumes:
       - ./data:/data/db
     networks:
       - shared-net
+
   mongo-express:
-    container_name: mongo-express
     image: mongo-express
     depends_on:
       - mongodb
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+    ports:
+      - "8091:8081"
     networks:
       - shared-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
     environment:
-      - ME_CONFIG_MONGODB_SERVER=mongodb
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - shared-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
     ports:
-      - '8081:8081'
-    restart: always
-    volumes:
-      - ./data:/data/db
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - shared-net
+
 
   app:
-    image: backend
+    image: collab-service
     build:
-      context: .
+      context: ./collab-service
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
-      - "8085:8085"
-    restart: always
-    links:
-      - mongodb
+      - "8095:8085"
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       - mongodb
+      - kafka
     networks:
       - shared-net
+
 networks:
   shared-net:
     driver: bridge
