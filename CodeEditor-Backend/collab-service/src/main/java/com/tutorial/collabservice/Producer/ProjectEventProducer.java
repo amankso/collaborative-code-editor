@@ -1,6 +1,6 @@
 package com.tutorial.collabservice.Producer;
 
-import com.tutorial.collabservice.model.Project;
+import com.tutorial.common.model.Project;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 

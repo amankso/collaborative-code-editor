@@ -1,132 +1,85 @@
 import React, { useEffect, useState } from "react";
-import { CodeEditor } from "../../components/CodeEditor/CodeEditor";
-import SplitPane from "react-split-pane";
-import Pane from "react-split-pane/lib/Pane";
-import * as io from "socket.io-client";
-import "./PlaygroundPage.css";
-import { Emulator } from "../../components/Emulator/Emulator";
 import { useParams } from "react-router-dom";
+import { io } from "socket.io-client";
+import Editor from "@monaco-editor/react";
+import { Emulator } from "../../components/Emulator/Emulator";
 import { BASE_URL } from "../../constants";
+import "./PlaygroundPage.css";
 
 const SAVE_INTERVAL_MS = 2000;
 const RUN_INTERVAL_MS = 1200;
 
-//const socket = io("http://localhost:9092", { reconnection: false,query: "foo=bar"  });
-//
-export const PlaygroundPage = (props) => {
-  let { projectID } = useParams();
+export const PlaygroundPage = () => {
+  const { projectID } = useParams();
 
   const [html, setHtml] = useState("loading...");
   const [css, setCss] = useState("loading...");
   const [js, setJs] = useState("loading...");
-
   const [delayedCodes, setDelayedCodes] = useState({ html, css, js });
+  const [socket, setSocket] = useState(null);
 
-  const [socket, setSocket] = useState();
-
-  //connect to socket
+  // connect socket
   useEffect(() => {
     const s = io(BASE_URL, {
-      reconnection: false,
-      query: "room=" + projectID,
+      transports: ["websocket"],
+      query: { room: projectID },
     });
     setSocket(s);
-    return () => {
-      s.disconnect();
-    };
+    return () => s.disconnect();
   }, [projectID]);
 
-  //get project
+  // get project
   useEffect(() => {
-    if (projectID !== undefined && socket !== undefined) {
-      socket.emit("project_get", {
-        room: projectID,
-      });
+    if (socket) {
+      socket.emit("project_get", { room: projectID });
     }
-  }, [projectID, socket]);
+  }, [socket, projectID]);
 
-  //delayed auto run codes
+  // delayed run
   useEffect(() => {
     const interval = setInterval(() => {
       setDelayedCodes({ html, css, js });
     }, RUN_INTERVAL_MS);
-
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [html, css, js]);
 
-  //auto saver
+  // auto save
   useEffect(() => {
-    if (
-      socket === undefined ||
-      html === "loading..." ||
-      css === "loading..." ||
-      js === "loading..."
-    )
-      return;
+    if (!socket || html === "loading...") return;
     const interval = setInterval(() => {
       socket.emit("project_save", {
         room: projectID,
-        html: html,
-        css: css,
-        js: js,
+        html,
+        css,
+        js,
       });
     }, SAVE_INTERVAL_MS);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [socket, html, css, js]);
-
-  const onHtmlChange = (value) => {
-    setHtml(value);
-    notifyChange(value, "HTML");
-  };
-
-  const onCssChange = (value) => {
-    setCss(value);
-    notifyChange(value, "CSS");
-  };
-
-  const onJsChange = (value) => {
-    setJs(value);
-    notifyChange(value, "JS");
-  };
+    return () => clearInterval(interval);
+  }, [socket, html, css, js, projectID]);
 
   const notifyChange = (value, type) => {
+    if (!socket) return;
     socket.emit("project_write", {
       data: value,
       room: projectID,
-      type: type,
+      type,
     });
   };
 
+  // socket listeners
   useEffect(() => {
-    if (socket == null) return;
+    if (!socket) return;
+
     const project_read = ({ data, type }) => {
-      // setValues({ ...values, [type.toLowerCase()]: data });
-      switch (type) {
-        case "HTML":
-          setHtml(data);
-          //setValues({ ...values, html: data });
-          break;
-        case "CSS":
-          setCss(data);
-          // setValues({ ...values, css: data });
-          break;
-        case "JS":
-          setJs(data);
-          // setValues({ ...values, js: data });
-          break;
-      }
+      if (type === "HTML") setHtml(data);
+      if (type === "CSS") setCss(data);
+      if (type === "JS") setJs(data);
     };
 
     const project_retrieve = (data) => {
-      const jsonData = JSON.parse(data);
-      setHtml(jsonData.html);
-      setCss(jsonData.css);
-      setJs(jsonData.js);
+      setHtml(data.html);
+      setCss(data.css);
+      setJs(data.js);
     };
 
     socket.on("project_read", project_read);
@@ -139,35 +92,43 @@ export const PlaygroundPage = (props) => {
   }, [socket]);
 
   return (
-    <div className="playground">
-      <SplitPane split="vertical">
-        <Pane initialSize="34%" minSize="15%">
-          <CodeEditor
-            name="HTML"
-            lang="xml"
-            value={html}
-            handleChange={onHtmlChange}
+      <div className="playground">
+        <div className="editor-row">
+          <Editor
+              height="30vh"
+              defaultLanguage="html"
+              value={html}
+              onChange={(v) => {
+                setHtml(v);
+                notifyChange(v, "HTML");
+              }}
+              theme="vs-dark"
           />
-        </Pane>
-        <Pane initialSize="33%" minSize="15%">
-          <CodeEditor
-            name="CSS"
-            lang="css"
-            value={css}
-            handleChange={onCssChange}
-          />
-        </Pane>
-        <Pane initialSize="33%" minSize="15%">
-          <CodeEditor
-            name="JS"
-            lang="javascript"
-            value={js}
-            handleChange={onJsChange}
-          />
-        </Pane>
-      </SplitPane>
 
-      <Emulator values={delayedCodes} />
-    </div>
+          <Editor
+              height="30vh"
+              defaultLanguage="css"
+              value={css}
+              onChange={(v) => {
+                setCss(v);
+                notifyChange(v, "CSS");
+              }}
+              theme="vs-dark"
+          />
+
+          <Editor
+              height="30vh"
+              defaultLanguage="javascript"
+              value={js}
+              onChange={(v) => {
+                setJs(v);
+                notifyChange(v, "JS");
+              }}
+              theme="vs-dark"
+          />
+        </div>
+
+        <Emulator values={delayedCodes} />
+      </div>
   );
 };

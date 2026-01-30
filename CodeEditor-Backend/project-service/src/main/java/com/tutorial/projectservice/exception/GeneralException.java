@@ -1,16 +1,18 @@
 package com.tutorial.projectservice.exception;
 
-import lombok.Data;
 import org.springframework.http.HttpStatus;
 
-@Data
-public class GeneralException extends RuntimeException{
-    private String message;
-    private HttpStatus status;
+public class GeneralException extends RuntimeException {
+
+    private final HttpStatus status;
 
     public GeneralException(String message, HttpStatus status) {
-        this.message = message;
+        super(message);
         this.status = status;
     }
 
+    // This is the method the compiler was looking for
+    public HttpStatus getStatus() {
+        return status;
+    }
 }

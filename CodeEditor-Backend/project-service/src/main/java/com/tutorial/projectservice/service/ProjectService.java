@@ -2,9 +2,9 @@ package com.tutorial.projectservice.service;
 
 
 
+import com.tutorial.common.model.Project;
 import com.tutorial.projectservice.constant.DefaultProjectValues;
 import com.tutorial.projectservice.exception.GeneralException;
-import com.tutorial.projectservice.model.Project;
 import com.tutorial.projectservice.repository.ProjectRepository;
 import com.tutorial.projectservice.util.ProjectConverter;
 import lombok.extern.slf4j.Slf4j;

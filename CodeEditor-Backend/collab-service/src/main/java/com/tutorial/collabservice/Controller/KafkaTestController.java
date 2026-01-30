@@ -1,7 +1,7 @@
 package com.tutorial.collabservice.Controller;
 
+import com.tutorial.common.model.Project;
 
-import com.tutorial.collabservice.model.Project;
 import com.tutorial.collabservice.Producer.ProjectEventProducer;
 import org.springframework.web.bind.annotation.*;
 
