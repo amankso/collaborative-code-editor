@@ -61,7 +61,9 @@ public class ProjectService {
                 .html(DefaultProjectValues.HTML)
                 .css(DefaultProjectValues.CSS)
                 .js(DefaultProjectValues.JS)
+                .version(0L) // 👈 ADD
                 .build();
+
 
         log.info("Default project created for room {}", room);
         return projectRepository.save(project);
@@ -70,15 +72,33 @@ public class ProjectService {
     @CachePut(value = "projects", key = "#project.room")
     public Project update(Project project) {
         try {
+
             return projectRepository
                     .findFirstByRoom(project.getRoom())
                     .map(existing -> {
-                        existing.setHtml(project.getHtml());
-                        existing.setCss(project.getCss());
-                        existing.setJs(project.getJs());
+
+                        // 🚫 DROP STALE SAVE
+                        if (project.getVersion() <= existing.getVersion()) {
+                            log.warn("Stale save ignored for room {}", project.getRoom());
+                            return existing;
+                        }
+
+                        if (project.getHtml() != null)
+                            existing.setHtml(project.getHtml());
+
+                        if (project.getCss() != null)
+                            existing.setCss(project.getCss());
+
+                        if (project.getJs() != null)
+                            existing.setJs(project.getJs());
+
+                        existing.setVersion(project.getVersion()); // 👈 IMPORTANT
+
                         log.info("Project updated for room {}", project.getRoom());
                         return projectRepository.save(existing);
                     })
+
+
                     .orElseGet(() -> {
                         project.setHtml(
                                 project.getHtml() == null ? DefaultProjectValues.HTML : project.getHtml());

@@ -4,12 +4,13 @@ import { io } from "socket.io-client";
 import Editor from "@monaco-editor/react";
 import { Emulator } from "../../components/Emulator/Emulator";
 import { BASE_URL } from "../../constants";
+import uuid4 from "uuid4";
 import "./PlaygroundPage.css";
 
 const SAVE_INTERVAL_MS = 2000;
 const RUN_INTERVAL_MS = 1200;
 
-// debounce helper
+
 const debounce = (fn, delay = 250) => {
   let t;
   return (...args) => {
@@ -20,6 +21,9 @@ const debounce = (fn, delay = 250) => {
 
 export const PlaygroundPage = () => {
   const { projectID } = useParams();
+
+  const clientId = useRef(uuid4()); // 🔑 UNIQUE CLIENT
+  const version = useRef(0);
 
   const [html, setHtml] = useState("loading...");
   const [css, setCss] = useState("loading...");
@@ -32,7 +36,7 @@ export const PlaygroundPage = () => {
   const lastSaved = useRef({ html: "", css: "", js: "" });
   const sendUpdate = useRef(null);
 
-  // connect socket
+  // connect
   useEffect(() => {
     const s = io(BASE_URL, {
       transports: ["websocket"],
@@ -53,6 +57,7 @@ export const PlaygroundPage = () => {
         room: projectID,
         type,
         data: value,
+        source: clientId.current
       });
     }, 200);
   }, [socket, projectID]);
@@ -70,7 +75,7 @@ export const PlaygroundPage = () => {
     return () => clearInterval(interval);
   }, [html, css, js]);
 
-  // autosave (only when content changed)
+  // autosave ONLY when user changed content
   useEffect(() => {
     if (!socket || !hasLoadedFromServer.current) return;
 
@@ -81,9 +86,7 @@ export const PlaygroundPage = () => {
           lastSaved.current.html === html &&
           lastSaved.current.css === css &&
           lastSaved.current.js === js
-      ) {
-        return; // nothing changed
-      }
+      ) return;
 
       lastSaved.current = { html, css, js };
 
@@ -92,6 +95,8 @@ export const PlaygroundPage = () => {
         html,
         css,
         js,
+        version: ++version.current,
+        source: clientId.current
       });
     }, SAVE_INTERVAL_MS);
 
@@ -113,6 +118,16 @@ export const PlaygroundPage = () => {
     };
 
     const project_retrieved = (data) => {
+      if (!hasLoadedFromServer.current) {
+        version.current = data.version || 0;
+      } else {
+        if (data.version <= version.current) return;
+        version.current = data.version;
+      }
+
+
+      if (data.source === clientId.current) return;
+
       isRemoteUpdate.current = true;
 
       setHtml(data.html);
@@ -142,8 +157,6 @@ export const PlaygroundPage = () => {
   // local typing
   const onLocalChange = (type, value, setter) => {
     if (value === undefined) return;
-
-    isRemoteUpdate.current = false;
     setter(value);
     sendUpdate.current(type, value);
   };

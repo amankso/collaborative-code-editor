@@ -16,4 +16,6 @@ public class Project {
     private String data;  // actual content
     private String source; // "SOCKET" | "DB"
 
+    private long version;
+
 }

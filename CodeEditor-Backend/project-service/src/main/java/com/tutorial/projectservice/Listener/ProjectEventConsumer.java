@@ -31,19 +31,25 @@ public class ProjectEventConsumer {
                 Project fetched =
                         projectService.getOrCreateByDefaultValues(event.getRoom());
                 fetched.setType("PROJECT_SAVED");
+                fetched.setSource("DB");   // ✅ ADD THIS
+                fetched.setVersion(fetched.getVersion()); // send version
 
                 kafkaTemplate.send("project-events", fetched.getRoom(), fetched);
             }
 
+
             case "PROJECT_SAVE" -> {
                 if ("DB".equals(event.getSource())) return;
+
                 Project saved = projectService.update(event);
 
-                saved.setType("PROJECT_SAVED"); // now means DONE
-                saved.setSource("DB");
+                saved.setType("PROJECT_SAVED");
+                saved.setSource(event.getSource());
+                saved.setVersion(saved.getVersion()); // 👈 ADD THIS
 
                 kafkaTemplate.send("project-events", saved.getRoom(), saved);
             }
+
 
 
             case "PROJECT_WRITE" -> {

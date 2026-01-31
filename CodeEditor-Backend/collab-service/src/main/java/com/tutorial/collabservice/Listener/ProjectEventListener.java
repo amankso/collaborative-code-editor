@@ -39,10 +39,10 @@ public class ProjectEventListener {
 
 
             case "PROJECT_SAVED" -> {
-                if (!"DB".equals(event.getSource())) return;
                 server.getRoomOperations(room)
                         .sendEvent("project_retrieved", event);
             }
+
         }
     }
 
