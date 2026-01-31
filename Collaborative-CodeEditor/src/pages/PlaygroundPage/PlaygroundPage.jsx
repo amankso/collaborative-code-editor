@@ -9,6 +9,7 @@ import "./PlaygroundPage.css";
 const SAVE_INTERVAL_MS = 2000;
 const RUN_INTERVAL_MS = 1200;
 
+// debounce helper
 const debounce = (fn, delay = 250) => {
   let t;
   return (...args) => {
@@ -27,9 +28,11 @@ export const PlaygroundPage = () => {
   const [socket, setSocket] = useState(null);
 
   const isRemoteUpdate = useRef(false);
+  const hasLoadedFromServer = useRef(false);
+  const lastSaved = useRef({ html: "", css: "", js: "" });
   const sendUpdate = useRef(null);
 
-  // connect
+  // connect socket
   useEffect(() => {
     const s = io(BASE_URL, {
       transports: ["websocket"],
@@ -39,7 +42,7 @@ export const PlaygroundPage = () => {
     return () => s.disconnect();
   }, [projectID]);
 
-  // debounced typing sender
+  // debounced live typing sender
   useEffect(() => {
     if (!socket) return;
 
@@ -67,12 +70,22 @@ export const PlaygroundPage = () => {
     return () => clearInterval(interval);
   }, [html, css, js]);
 
-  // autosave
+  // autosave (only when content changed)
   useEffect(() => {
-    if (!socket || html === "loading...") return;
+    if (!socket || !hasLoadedFromServer.current) return;
 
     const interval = setInterval(() => {
       if (isRemoteUpdate.current) return;
+
+      if (
+          lastSaved.current.html === html &&
+          lastSaved.current.css === css &&
+          lastSaved.current.js === js
+      ) {
+        return; // nothing changed
+      }
+
+      lastSaved.current = { html, css, js };
 
       socket.emit("project_save", {
         room: projectID,
@@ -101,9 +114,19 @@ export const PlaygroundPage = () => {
 
     const project_retrieved = (data) => {
       isRemoteUpdate.current = true;
+
       setHtml(data.html);
       setCss(data.css);
       setJs(data.js);
+
+      lastSaved.current = {
+        html: data.html,
+        css: data.css,
+        js: data.js,
+      };
+
+      hasLoadedFromServer.current = true;
+
       setTimeout(() => (isRemoteUpdate.current = false), 50);
     };
 
@@ -118,6 +141,8 @@ export const PlaygroundPage = () => {
 
   // local typing
   const onLocalChange = (type, value, setter) => {
+    if (value === undefined) return;
+
     isRemoteUpdate.current = false;
     setter(value);
     sendUpdate.current(type, value);
