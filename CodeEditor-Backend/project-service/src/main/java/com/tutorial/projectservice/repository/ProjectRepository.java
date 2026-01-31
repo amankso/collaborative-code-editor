@@ -10,6 +10,7 @@ import java.util.Optional;
 @Repository
 public interface ProjectRepository extends MongoRepository<Project,String> {
 
-    Optional<Project> findByRoom(String room);
+    Optional<Project> findFirstByRoom(String room);
+    boolean existsByRoom(String room);
 
 }

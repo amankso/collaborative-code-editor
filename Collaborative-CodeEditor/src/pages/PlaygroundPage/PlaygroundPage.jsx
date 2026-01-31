@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import Editor from "@monaco-editor/react";
@@ -9,6 +9,14 @@ import "./PlaygroundPage.css";
 const SAVE_INTERVAL_MS = 2000;
 const RUN_INTERVAL_MS = 1200;
 
+const debounce = (fn, delay = 250) => {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+};
+
 export const PlaygroundPage = () => {
   const { projectID } = useParams();
 
@@ -18,7 +26,10 @@ export const PlaygroundPage = () => {
   const [delayedCodes, setDelayedCodes] = useState({ html, css, js });
   const [socket, setSocket] = useState(null);
 
-  // connect socket
+  const isRemoteUpdate = useRef(false);
+  const sendUpdate = useRef(null);
+
+  // connect
   useEffect(() => {
     const s = io(BASE_URL, {
       transports: ["websocket"],
@@ -28,14 +39,27 @@ export const PlaygroundPage = () => {
     return () => s.disconnect();
   }, [projectID]);
 
-  // get project
+  // debounced typing sender
   useEffect(() => {
-    if (socket) {
-      socket.emit("project_get", { room: projectID });
-    }
+    if (!socket) return;
+
+    sendUpdate.current = debounce((type, value) => {
+      if (isRemoteUpdate.current) return;
+
+      socket.emit("project_write", {
+        room: projectID,
+        type,
+        data: value,
+      });
+    }, 200);
   }, [socket, projectID]);
 
-  // delayed run
+  // initial load
+  useEffect(() => {
+    if (socket) socket.emit("project_get", { room: projectID });
+  }, [socket, projectID]);
+
+  // iframe refresh
   useEffect(() => {
     const interval = setInterval(() => {
       setDelayedCodes({ html, css, js });
@@ -43,10 +67,13 @@ export const PlaygroundPage = () => {
     return () => clearInterval(interval);
   }, [html, css, js]);
 
-  // auto save
+  // autosave
   useEffect(() => {
     if (!socket || html === "loading...") return;
+
     const interval = setInterval(() => {
+      if (isRemoteUpdate.current) return;
+
       socket.emit("project_save", {
         room: projectID,
         html,
@@ -54,76 +81,72 @@ export const PlaygroundPage = () => {
         js,
       });
     }, SAVE_INTERVAL_MS);
+
     return () => clearInterval(interval);
   }, [socket, html, css, js, projectID]);
-
-  const notifyChange = (value, type) => {
-    if (!socket) return;
-    socket.emit("project_write", {
-      data: value,
-      room: projectID,
-      type,
-    });
-  };
 
   // socket listeners
   useEffect(() => {
     if (!socket) return;
 
     const project_read = ({ data, type }) => {
+      isRemoteUpdate.current = true;
+
       if (type === "HTML") setHtml(data);
       if (type === "CSS") setCss(data);
       if (type === "JS") setJs(data);
+
+      setTimeout(() => (isRemoteUpdate.current = false), 50);
     };
 
-    const project_retrieve = (data) => {
+    const project_retrieved = (data) => {
+      isRemoteUpdate.current = true;
       setHtml(data.html);
       setCss(data.css);
       setJs(data.js);
+      setTimeout(() => (isRemoteUpdate.current = false), 50);
     };
 
     socket.on("project_read", project_read);
-    socket.on("project_retrieved", project_retrieve);
+    socket.on("project_retrieved", project_retrieved);
 
     return () => {
       socket.off("project_read", project_read);
-      socket.off("project_retrieved", project_retrieve);
+      socket.off("project_retrieved", project_retrieved);
     };
   }, [socket]);
+
+  // local typing
+  const onLocalChange = (type, value, setter) => {
+    isRemoteUpdate.current = false;
+    setter(value);
+    sendUpdate.current(type, value);
+  };
 
   return (
       <div className="playground">
         <div className="editor-row">
           <Editor
               height="30vh"
-              defaultLanguage="html"
+              language="html"
               value={html}
-              onChange={(v) => {
-                setHtml(v);
-                notifyChange(v, "HTML");
-              }}
+              onChange={(v) => onLocalChange("HTML", v, setHtml)}
               theme="vs-dark"
           />
 
           <Editor
               height="30vh"
-              defaultLanguage="css"
+              language="css"
               value={css}
-              onChange={(v) => {
-                setCss(v);
-                notifyChange(v, "CSS");
-              }}
+              onChange={(v) => onLocalChange("CSS", v, setCss)}
               theme="vs-dark"
           />
 
           <Editor
               height="30vh"
-              defaultLanguage="javascript"
+              language="javascript"
               value={js}
-              onChange={(v) => {
-                setJs(v);
-                notifyChange(v, "JS");
-              }}
+              onChange={(v) => onLocalChange("JS", v, setJs)}
               theme="vs-dark"
           />
         </div>

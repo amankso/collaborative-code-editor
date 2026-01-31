@@ -20,23 +20,34 @@ public class ProjectEventConsumer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @KafkaListener(topics = "project-events", groupId = "project-service")
+    @KafkaListener(topics = "project-commands", groupId = "project-service")
     public void handle(Project event) {
 
-        if ("PROJECT_UPDATED".equals(event.getType())) {
+        if (event == null || event.getType() == null) return;
 
-            Project saved = projectService.update(event);
-            saved.setType("PROJECT_SAVED");
+        switch (event.getType()) {
 
-            kafkaTemplate.send("project-events", saved.getRoom(), saved);
-        }
+            case "PROJECT_GET" -> {
+                Project fetched =
+                        projectService.getOrCreateByDefaultValues(event.getRoom());
+                fetched.setType("PROJECT_SAVED");
+                kafkaTemplate.send("project-events", fetched.getRoom(), fetched);
+            }
 
-        else if ("PROJECT_GET".equals(event.getType())) {
+            case "PROJECT_SAVE" -> {
+                Project saved = projectService.update(event);
 
-            Project fetched = projectService.getOrCreateByDefaultValues(event.getRoom());
-            fetched.setType("PROJECT_SAVED");
+                saved.setType("PROJECT_SAVED"); // now means DONE
+                saved.setSource("DB");
 
-            kafkaTemplate.send("project-events", fetched.getRoom(), fetched);
+                kafkaTemplate.send("project-events", saved.getRoom(), saved);
+            }
+
+
+            case "PROJECT_WRITE" -> {
+                // just relay to other clients
+                kafkaTemplate.send("project-events", event.getRoom(), event);
+            }
         }
     }
 }

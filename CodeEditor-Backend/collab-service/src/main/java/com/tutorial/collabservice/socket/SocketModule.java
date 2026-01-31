@@ -1,12 +1,8 @@
 package com.tutorial.collabservice.socket;
 
 import com.corundumstudio.socketio.SocketIOServer;
-import com.corundumstudio.socketio.listener.ConnectListener;
-import com.corundumstudio.socketio.listener.DataListener;
-import com.corundumstudio.socketio.listener.DisconnectListener;
-
+import com.corundumstudio.socketio.listener.*;
 import com.tutorial.collabservice.Producer.ProjectEventProducer;
-
 import com.tutorial.common.model.Project;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,55 +28,61 @@ public class SocketModule {
         server.addEventListener("project_save", Project.class, projectSave());
     }
 
-    // ========== FRONTEND → KAFKA ONLY ==========
     private DataListener<Project> projectWrite() {
         return (client, data, ackSender) -> {
 
-            data.setType("PROJECT_UPDATED");
+            Project event = Project.builder()
+                    .room(data.getRoom())
+                    .type("PROJECT_WRITE")
+                    .field(data.getType())
+                    .data(data.getData())
+                    .source("SOCKET")
+                    .build();
 
-            producer.send(data);
-
-            log.info("PROJECT_UPDATED sent to Kafka for room {}", data.getRoom());
+            producer.send(event);
+            log.info("PROJECT_WRITE → Kafka [{}]", data.getRoom());
         };
     }
 
     private DataListener<Project> projectGet() {
         return (client, data, ackSender) -> {
-
             Project event = Project.builder()
                     .room(data.getRoom())
                     .type("PROJECT_GET")
                     .build();
 
             producer.send(event);
-
-            log.info("PROJECT_GET sent to Kafka for room {}", data.getRoom());
+            log.info("PROJECT_GET → Kafka [{}]", data.getRoom());
         };
     }
 
     private DataListener<Project> projectSave() {
         return (client, data, ackSender) -> {
 
-            data.setType("PROJECT_UPDATED");
+            Project event = Project.builder()
+                    .room(data.getRoom())
+                    .type("PROJECT_SAVE")
+                    .html(data.getHtml())
+                    .css(data.getCss())
+                    .js(data.getJs())
+                    .source("SOCKET")
+                    .build();
 
-            producer.send(data);
-
-            log.info("PROJECT_SAVE forwarded as PROJECT_UPDATED for room {}", data.getRoom());
+            producer.send(event);
+            log.info("PROJECT_SAVED → Kafka [{}]", data.getRoom());
         };
     }
 
-    // ========== SOCKET CONNECTION ==========
     private ConnectListener onConnected() {
         return client -> {
             String room = client.getHandshakeData().getSingleUrlParam("room");
             client.joinRoom(room);
-            log.info("Socket ID[{}] - room[{}] Connected",
-                    client.getSessionId(), room);
+            log.info("Socket {} joined room {}", client.getSessionId(), room);
         };
     }
 
     private DisconnectListener onDisconnected() {
         return client ->
-                log.info("Client[{}] - Disconnected", client.getSessionId());
+                log.info("Socket {} disconnected", client.getSessionId());
     }
 }

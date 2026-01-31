@@ -12,4 +12,8 @@ public class Project {
     private String css;
     private String js;
     private String type;
+    private String field; // HTML / CSS / JS
+    private String data;  // actual content
+    private String source; // "SOCKET" | "DB"
+
 }

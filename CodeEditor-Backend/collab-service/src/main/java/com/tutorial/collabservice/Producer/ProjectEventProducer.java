@@ -14,6 +14,7 @@ public class ProjectEventProducer {
     }
 
     public void send(Project event) {
-        kafkaTemplate.send("project-events", event.getRoom(), event);
+        kafkaTemplate.send("project-commands", event.getRoom(), event);
     }
 }
+
