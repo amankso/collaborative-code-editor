@@ -1,12 +1,15 @@
 package com.tutorial.projectservice.service;
 
 
-import com.tutorial.platformservice.exception.GeneralException;
+
 import com.tutorial.projectservice.constant.DefaultProjectValues;
+import com.tutorial.projectservice.exception.GeneralException;
 import com.tutorial.projectservice.model.Project;
 import com.tutorial.projectservice.repository.ProjectRepository;
 import com.tutorial.projectservice.util.ProjectConverter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -30,10 +33,12 @@ public class ProjectService {
                 .orElseThrow(() -> new GeneralException("Not found!", HttpStatus.NOT_FOUND));
     }
 
+    @Cacheable(value = "projects", key = "#room")
     public Project getProjectByRoom(String room) {
         return projectRepository.findByRoom(room)
                 .orElseThrow(() -> new GeneralException("Not found!", HttpStatus.NOT_FOUND));
     }
+
 
     public boolean existsByRoom(String room) {
         return projectRepository.findByRoom(room).isPresent();
@@ -62,6 +67,7 @@ public class ProjectService {
     }
 
 
+    @CachePut(value = "projects", key = "#project.room")
     public Project update(Project project) {
         if (!existsByRoom(project.getRoom())) {
             project.setHtml(DefaultProjectValues.HTML);
@@ -76,6 +82,7 @@ public class ProjectService {
         log.info("Project updated");
         return projectRepository.save(existing);
     }
+
 
 
     public String projectToJsonString(Project project) {

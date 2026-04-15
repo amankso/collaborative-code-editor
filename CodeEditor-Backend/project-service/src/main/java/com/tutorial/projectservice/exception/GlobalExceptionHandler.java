@@ -1,4 +1,4 @@
-package com.tutorial.platformservice.exception;
+package com.tutorial.projectservice.exception;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

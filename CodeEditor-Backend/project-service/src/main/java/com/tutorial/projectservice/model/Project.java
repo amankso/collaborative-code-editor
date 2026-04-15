@@ -24,5 +24,6 @@ public class Project {
     private String html;
     private String css;
     private String js;
+    private String type;
 
 }

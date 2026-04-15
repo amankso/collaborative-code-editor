@@ -2,7 +2,8 @@ package com.tutorial.projectservice.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutorial.platformservice.exception.GeneralException;
+
+import com.tutorial.projectservice.exception.GeneralException;
 import com.tutorial.projectservice.model.Project;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
